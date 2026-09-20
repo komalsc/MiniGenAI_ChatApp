@@ -4,6 +4,7 @@ const starterMessage = {
     role: "assistant",
     content: "Hello. I am Orbit, a local AI assistant powered by Ollama. What are we thinking through today?"
 };
+const apiUrl = import.meta.env.VITE_API_URL || "";
 
 function App() {
     const [messages, setMessages] = useState([starterMessage]);
@@ -29,7 +30,7 @@ function App() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("/api/chat", {
+            const response = await fetch(`${apiUrl}/api/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ messages: nextMessages })

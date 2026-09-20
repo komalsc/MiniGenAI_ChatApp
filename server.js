@@ -1,5 +1,6 @@
 import express from "express";
 import ollama from "ollama";
+import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,6 +10,9 @@ const maxMessages = 20;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(express.json({ limit: "32kb" }));
+app.use(cors({
+    origin: process.env.FRONTEND_URL || true
+}));
 
 app.get("/api/health", (_request, response) => {
     response.json({ status: "ok", model });

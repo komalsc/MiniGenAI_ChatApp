@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const app = express();
-const model = process.env.OLLAMA_MODEL || "llama3.2";
+const provider = process.env.AI_PROVIDER || "ollama";
+const model = provider === "openrouter"
+    ? (process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini")
+    : (process.env.OLLAMA_MODEL || "llama3.2");
 const maxMessages = 20;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,8 +18,35 @@ app.use(cors({
 }));
 
 app.get("/api/health", (_request, response) => {
-    response.json({ status: "ok", model });
+    response.json({ status: "ok", provider, model });
 });
+
+async function askModel(messages) {
+    if (provider === "openrouter") {
+        if (!process.env.OPENROUTER_API_KEY) {
+            throw new Error("OPENROUTER_API_KEY is not configured");
+        }
+
+        const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": process.env.FRONTEND_URL || "http://localhost:5173",
+                "X-Title": "Orbit Chat"
+            },
+            body: JSON.stringify({ model, messages })
+        });
+        const data = await openRouterResponse.json();
+        if (!openRouterResponse.ok) {
+            throw new Error(data.error?.message || "The hosted model request failed");
+        }
+        return data.choices?.[0]?.message;
+    }
+
+    const result = await ollama.chat({ model, messages });
+    return result.message;
+}
 
 app.post("/api/chat", async (request, response) => {
     const { messages } = request.body;
@@ -39,12 +69,15 @@ app.post("/api/chat", async (request, response) => {
     }
 
     try {
-        const result = await ollama.chat({ model, messages: validMessages });
-        return response.json({ message: result.message, model });
+        const message = await askModel(validMessages);
+        if (!message?.content) throw new Error("The model returned an empty response");
+        return response.json({ message, model, provider });
     } catch (error) {
-        console.error("Ollama request failed:", error.message);
+        console.error(`${provider} request failed:`, error.message);
         return response.status(502).json({
-            error: "Could not reach Ollama. Make sure Ollama is running and the model is installed."
+            error: provider === "openrouter"
+                ? "The hosted AI service could not respond. Check the server API key and model settings."
+                : "Could not reach Ollama. Make sure Ollama is running and the model is installed."
         });
     }
 });

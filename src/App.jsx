@@ -35,7 +35,13 @@ function App() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ messages: nextMessages })
             });
-            const data = await response.json();
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                throw new Error("The chat API is not connected. Set VITE_API_URL to your deployed backend URL.");
+            }
             if (!response.ok) throw new Error(data.error || "The assistant could not respond.");
             setMessages((current) => [...current, data.message]);
         } catch (requestError) {
@@ -59,7 +65,7 @@ function App() {
                     <span className="brand-mark">O</span>
                     <span>ORBIT <em>CHAT</em></span>
                 </a>
-                <div className="connection-status"><span /> Local model online</div>
+                <div className="connection-status"><span /> AI assistant</div>
             </header>
 
             <section className="chat-layout">
@@ -78,9 +84,9 @@ function App() {
 
                     <div className="model-badge">
                         <span className="pulse-dot" />
-                        <div><small>ACTIVE MODEL</small><strong>llama3.2</strong></div>
+                        <div><small>MODEL PROVIDER</small><strong>Ollama / cloud</strong></div>
                     </div>
-                    <div className="tip"><span>↗</span> Your messages stay on your machine.</div>
+                    <div className="tip"><span>↗</span> Your messages are sent securely to the configured AI service.</div>
                 </aside>
 
                 <section className="chat-panel" aria-label="Chat conversation">
@@ -92,7 +98,7 @@ function App() {
                     <div className="messages" aria-live="polite">
                         {messages.map((message, index) => (
                             <article className={`message ${message.role}`} key={`${message.role}-${index}`}>
-                                <div className="message-meta">{message.role === "user" ? "YOU" : "ORBIT"}<span>{message.role === "user" ? "" : "· LOCAL AI"}</span></div>
+                                <div className="message-meta">{message.role === "user" ? "YOU" : "ORBIT"}<span>{message.role === "user" ? "" : "· AI"}</span></div>
                                 <p>{message.content}</p>
                             </article>
                         ))}
@@ -116,7 +122,7 @@ function App() {
                     </form>
                 </section>
             </section>
-            <footer><span>ORBIT CHAT</span><span>BUILT WITH REACT · NODE · OLLAMA</span></footer>
+            <footer><span>ORBIT CHAT</span><span>BUILT WITH REACT · NODE · AI</span></footer>
         </main>
     );
 }
